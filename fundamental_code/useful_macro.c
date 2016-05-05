@@ -1,4 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+/*
+ * gcc -o useful_macro -g useful_macro.c
+ */
+
 
 /*
  * distinguish C++ and C
@@ -43,11 +49,13 @@ int add(int a, int b) XX_THROW
  * transform to string
  */
 #define STRINGIFY(s) # s
+#define CONCAT(a, b) a ## b
 #if 0
 /* test: STRINGIFY(s) # s */
 int main(int argc, char **argv)
 {
 	printf("%s\n", STRINGIFY(3.1415));
+	printf("%d\n", CONCAT(3, 4));
 
 	return 0;
 }
@@ -58,7 +66,8 @@ int main(int argc, char **argv)
  * macro define base and derived class
  */
 /* reference lighttpd */
-#define DATA_UNSET 			\
+#if 0
+#define DATA_UNSET 			
 	data_type_t type; 		\
     buffer *key; 			\
     int is_index_key; /* 1 if key is a array index */ \
@@ -81,4 +90,30 @@ struct data_config {
 	char *value;
 };
 
+#endif
 
+#ifndef likely
+#define likely(x)  __builtin_expect(!!(x), 1)
+#endif
+#ifndef unlikely
+#define unlikely(x)  __builtin_expect(!!(x), 0)
+#endif
+#if 0
+int main(int argc, char **argv)
+{
+	int a, b;
+
+	a = 1;
+	b = 2;
+	if (likely( a == 1)) {
+		printf("You guess right, a == 1\n");
+	}
+
+	if (unlikely(b != 1)) {
+		printf("You guess right, b != 1\n");
+	}
+
+	return 0;
+}
+
+#endif

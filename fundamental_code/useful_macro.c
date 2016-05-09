@@ -117,3 +117,44 @@ int main(int argc, char **argv)
 }
 
 #endif
+
+#ifndef __offsetof
+#define __offsetof(type, field) ((size_t)(&((type *)NULL)->field))
+#endif
+
+#if 0
+struct student {
+	int 	age;
+	char	*name;
+	double	score;
+};
+
+int main(int argc, char **argv)
+{
+	struct student s = { 23, "Jean", 89.9 };
+
+	printf("score offset in struct student:%u\n", __offsetof(struct student, score));
+	//printf("name:%d\n", (int *)(&s));
+
+	return 0;
+}
+#endif
+
+/*
+ * test n is power of 2 or not
+ */
+#define is_power_of_2(n)    \
+      (n != 0 && ((n & (n - 1)) == 0))
+
+#if 0
+int main(int argc, char **argv)
+{
+	unsigned long n = 254;
+	if (is_power_of_2(n)) {
+		printf("%lu is power of 2\n", n);
+	} else {
+		printf("%lu is not power of 2\n", n);
+	}
+	return 0;
+}
+#endif

@@ -9,7 +9,7 @@ cur =db.cursor();
 
 cur.execute('use figure_model_environment')
 
-table_pre = 'current_weather_atom_'
+table_pre = 'disaster_warning_atom_'
 
 table_num = 100
 

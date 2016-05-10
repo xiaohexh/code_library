@@ -27,7 +27,7 @@ for i in range(table_num):
 	fd.write('srcid            int,\n')
 	fd.write('update_time      datetime not null,\n')
 	fd.write('gbcode           int  NOT NULL,\n');
-	fd.write('tempture         decimal(4,2),\n');
+	fd.write('tempture         int,\n');
 	fd.write('weather     	   int,\n');
 	fd.write('wind_power       int,\n');
 	fd.write('wind_direction   int,\n');

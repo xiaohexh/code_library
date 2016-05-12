@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-table_pre = 'future_weather_'
+table_pre = 'future_weather_atom_'
 
 table_num = 100
 

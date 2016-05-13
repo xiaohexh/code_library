@@ -1,0 +1,9 @@
+[2016-05-04 07:22:32][server.c 120] accept client connection success
+[2016-05-04 07:22:39][client.c 50] client before connect
+[2016-05-04 07:22:49][client.c 61] client connect success
+[2016-05-04 07:22:49][client.c 70] send 'Hello
+' to server success
+[2016-05-04 07:22:49][client.c 74] client before read from server
+[2016-05-04 07:22:49][server.c 74] enter server_in and read from client
+[2016-05-04 07:22:49][server.c 99] read msg from client: 
+[2016-05-04 07:22:49][client.c 76] client after read from server

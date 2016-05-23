@@ -105,9 +105,18 @@ static void show_usage(void)
         PROC_NUM);
 }
 
+void set_default_options()
+{
+	conf_file = CONF_PATH;
+	pid_file = PID_FILE;
+	nprocs = PROC_NUM;
+}
+
 int main(int argc, char **argv)
 {
 	int status;
+
+	set_default_options();
 
 	status = get_options(argc, argv);
 	if (status < 0) {
@@ -127,6 +136,7 @@ int main(int argc, char **argv)
 	}
 
 	printf("fork %d processes\n", nprocs);
+	printf("pid file path %s\n", pid_file);
 
 	return 0;
 }

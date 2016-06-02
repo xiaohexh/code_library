@@ -3,10 +3,13 @@ CXX	= g++
 
 INC = .
 LIB = 
-CFLAGS = -g -Wall -O2 -pipe -fno-ident -MMD -D_GNU_SOURCE -D_REENTRANT -Wno-deprecated
+CFLAGS = -g -Wall -O2 -pipe -fno-ident -MMD -D_GNU_SOURCE -D_REENTRANT -Wno-deprecated -lpthread
 CXXFLAGS += $(CFLAGS)
 
-TARGET = 
+OBJ = demo.o \
+	  eio.o
+
+TARGET = libeio_demo
 
 all	: $(TARGET)
 

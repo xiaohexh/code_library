@@ -9,8 +9,8 @@ cur =db.cursor();
 
 cur.execute('use figure_model_environment')
 
-table_pre = 'disaster_warning_atom_'
-#table_pre = 'future_weather_atom_'
+#table_pre = 'disaster_warning_atom_'
+table_pre = 'future_weather_atom_'
 
 table_num = 100
 wind_power = 5

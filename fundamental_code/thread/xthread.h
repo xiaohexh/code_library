@@ -1,6 +1,10 @@
 #ifndef _XTHREAD_H_
 #define _XTHREAD_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if __linux && !defined(_GNU_SOURCE)
 # define _GNU_SOURCE
 #endif
@@ -86,5 +90,9 @@ xthread_create (xthread_t *tid, void *(*proc)(void *), void *arg)
 
   return retval;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

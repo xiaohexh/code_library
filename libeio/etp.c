@@ -132,14 +132,14 @@ struct etp_pool
    etp_reqq req_queue;
    etp_reqq res_queue;
 
-   unsigned int started, idle, wanted;
+   unsigned int started, idle, wanted; /* 运行线程数, 空闲线程数, 目标线程数 */
 
    unsigned int max_poll_time;     /* pool->reslock */
    unsigned int max_poll_reqs;     /* pool->reslock */
 
-   unsigned int nreqs;    /* pool->reqlock */
-   unsigned int nready;   /* pool->reqlock */
-   unsigned int npending; /* pool->reqlock */
+   unsigned int nreqs;    /* pool->reqlock 请求任务个数 */
+   unsigned int nready;   /* pool->reqlock 待处理任务个数 */
+   unsigned int npending; /* pool->reqlock 未处理的回执个数 */
    unsigned int max_idle;      /* maximum number of threads that can pool->idle indefinitely */
    unsigned int idle_timeout; /* number of seconds after which an pool->idle threads exit */
 
@@ -325,6 +325,7 @@ etp_proc_init (void)
 
 X_THREAD_PROC (etp_proc)
 {
+  printf("enter etp_proc ...\n");
   ETP_REQ *req;
   struct timespec ts;
   etp_worker *self = (etp_worker *)thr_arg;
@@ -409,6 +410,7 @@ quit:
 static void ecb_cold
 etp_start_thread (etp_pool pool)
 {
+  printf("enter etp_start_thread ...\n");
   etp_worker *wrk = calloc (1, sizeof (etp_worker));
 
   /*TODO*/
@@ -435,6 +437,7 @@ etp_start_thread (etp_pool pool)
 static void
 etp_maybe_start_thread (etp_pool pool)
 {
+  printf("enter etp_maybe_start_thread ...\n");
   if (ecb_expect_true (etp_nthreads (pool) >= pool->wanted))
     return;
   
@@ -466,6 +469,7 @@ etp_end_thread (etp_pool pool)
 ETP_API_DECL int
 etp_poll (etp_pool pool)
 {
+  printf("enter etp_poll ... \n");
   unsigned int maxreqs;
   unsigned int maxtime;
   struct timeval tv_start, tv_now;
@@ -553,6 +557,7 @@ etp_grp_cancel (etp_pool pool, ETP_REQ *grp)
 ETP_API_DECL void
 etp_submit (etp_pool pool, ETP_REQ *req)
 {
+  printf("enter etp_submit ...\n");
   req->pri -= ETP_PRI_MIN;
 
   if (ecb_expect_false (req->pri < ETP_PRI_MIN - ETP_PRI_MIN)) req->pri = ETP_PRI_MIN - ETP_PRI_MIN;
@@ -580,6 +585,7 @@ etp_submit (etp_pool pool, ETP_REQ *req)
       ++pool->nreqs;
       ++pool->nready;
       reqq_push (&pool->req_queue, req);
+	  printf("will send cond signal reqwait ...\n");
       X_COND_SIGNAL (pool->reqwait);
       X_UNLOCK (pool->reqlock);
 

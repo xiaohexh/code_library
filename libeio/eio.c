@@ -49,6 +49,8 @@
 #endif
 #include "xthread.h"
 
+#include <stdio.h>
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -475,6 +477,7 @@ eio_cancel (eio_req *req)
 void
 eio_submit (eio_req *req)
 {
+  printf("enter eio_submit ...\n");
   etp_submit (EIO_POOL, req);
 }
 
@@ -2004,6 +2007,7 @@ eio_req *eio_wd_close (eio_wd wd, int pri, eio_cb cb, void *data)
 
 eio_req *eio_nop (int pri, eio_cb cb, void *data)
 {
+  printf("enter eio_nop ...\n");
   REQ (EIO_NOP); SEND;
 }
 
@@ -2154,6 +2158,7 @@ eio_req *eio_chmod (const char *path, mode_t mode, int pri, eio_cb cb, void *dat
 
 eio_req *eio_mkdir (const char *path, mode_t mode, int pri, eio_cb cb, void *data)
 {
+  printf("enter eio_mkidr ...\n");
   REQ (EIO_MKDIR); PATH; req->int2 = (long)mode; SEND;
 }
 

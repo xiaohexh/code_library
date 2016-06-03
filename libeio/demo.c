@@ -12,6 +12,9 @@
 
 int respipe [2];
 
+/*
+ * 功能:子线程通知主线程已有回执放入回执队列.
+ */
 void
 want_poll (void)
 {
@@ -22,16 +25,22 @@ want_poll (void)
   }
 }
 
+/*
+ * 功能:主线程回执处理完毕,调用此函数
+ */
 void
 done_poll (void)
 {
   char dummy;
   printf ("done_poll ()\n");
-  if (read (respipe [0], &dummy, 1)) {
-	  printf("write to %d failed\n", respipe [1]);
+  if (read (respipe [0], &dummy, 1) < 0) {
+	  printf("read from %d failed\n", respipe [0]);
   }
 }
 
+/*
+ * 功能:等到管道可读,处理回执信息
+ */
 void
 event_loop (void)
 {
@@ -134,15 +143,17 @@ main (void)
       /* avoid relative paths yourself(!) */
       eio_mkdir ("eio-test-dir", 0777, 0, res_cb, "mkdir");
       eio_nop (0, res_cb, "nop");
-      event_loop ();
+      //event_loop ();
+
 
       eio_stat ("eio-test-dir", 0, stat_cb, "stat");
       eio_lstat ("eio-test-dir", 0, stat_cb, "stat");
       eio_open ("eio-test-dir/eio-test-file", O_RDWR | O_CREAT, 0777, 0, open_cb, "open");
       eio_symlink ("test", "eio-test-dir/eio-symlink", 0, res_cb, "symlink");
       eio_mknod ("eio-test-dir/eio-fifo", S_IFIFO, 0, 0, res_cb, "mknod");
-      event_loop ();
+      //event_loop ();
 
+#if 0
       eio_utime ("eio-test-dir", 12345.678, 23456.789, 0, res_cb, "utime");
       eio_futime (last_fd, 92345.678, 93456.789, 0, res_cb, "futime");
       eio_chown ("eio-test-dir", getuid (), getgid (), 0, res_cb, "chown");
@@ -190,8 +201,11 @@ main (void)
 
       eio_rmdir ("eio-test-dir", 0, res_cb, "rmdir");
       event_loop ();
+#endif
     }
   while (0);
+
+  sleep(15);
 
   return 0;
 }

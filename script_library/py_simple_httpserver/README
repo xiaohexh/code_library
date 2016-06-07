@@ -1,0 +1,7 @@
+This is a very simple http server, constructed by SimpleHTTPServer.
+
+If there is an index.html file exist under this fold,
+when user access 127.0.0.1:8000 through web browser,
+contents of index.html will display.
+
+If there is no index.html file, file lists will be displayed on page.

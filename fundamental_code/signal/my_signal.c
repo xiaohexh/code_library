@@ -31,20 +31,19 @@ int sig_init()
         status = sigaction(sig->signo, &sa, NULL);
         if (status < 0) {
             log_error("sigaction failed: %s", strerror(errno));
-            return MY_ERROR;
+            return -1;
         }
     }
 
-    return MY_OK;
+    return 0;
 }
 
-void sig_handler(int signo, sig_cb_t cb, void *data)
+void sig_handler(int signo)
 {
     switch (signo) {
     case SIGINT:
     case SIGTERM:
-        log_stderr("I've received SIGINT sig, and I will exist");
-        cb(data);
+        log_stderr("I've received SIGINT/SIGTERM sig, and I will exist");
         break;
 
     case SIGUSR1:
@@ -56,3 +55,16 @@ void sig_handler(int signo, sig_cb_t cb, void *data)
         break;
     }
 }
+
+#if 0
+/* test signal handler */
+int main(int argc, char **argv)
+{
+	sig_init();
+	
+	kill(0, SIGTERM);
+
+	return 0;
+}
+
+#endif

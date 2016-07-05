@@ -1,0 +1,2 @@
+This is a simplest network communication between client and server,
+using fundamental unix system socket api.

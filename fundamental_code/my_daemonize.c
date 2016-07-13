@@ -7,6 +7,22 @@
 #include <sys/types.h>
 #include <errno.h>
 
+static void simple_daemonize(void)
+{
+	int fd;
+
+	if (fork() != 0) exit(0); /* parent exits */
+	setsid();	/* create a new session */
+
+	if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
+		dup2(fd, STDIN_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		dup2(fd, STDERR_FILENO);
+		if (fd > STDERR_FILENO)
+			close(fd);
+	}
+}
+
 static int my_daemonize(int dump_core)
 {
 	int status;
@@ -106,12 +122,11 @@ static int my_daemonize(int dump_core)
 int main(int argc, char **argv)
 {
 	printf("I will run on background\n");
-	my_daemonize(1);
+	//my_daemonize(1);
+	simple_daemonize();
 
 	printf("U cannot see this line 'cauz code run under bg\n");
-	while (1) {
-		sleep(1);
-	}
+	sleep(10);
 
 	return 0;
 }

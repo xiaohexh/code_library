@@ -10,7 +10,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
-#define MAX_BUF_LEN	1024
+#define MAX_BUF_LEN		1024
+#define READ_BUF_LEN	512
+#define WRITE_BUF_LEN	1024
 
 typedef void (*sig_cb_t)(int signo);
 
@@ -66,8 +68,8 @@ int main(int argc, char **argv)
 	int port;
 	char *host;
 
-	char rbuf[MAX_BUF_LEN];
-	char wbuf[MAX_BUF_LEN];
+	char rbuf[READ_BUF_LEN];
+	char wbuf[WRITE_BUF_LEN];
 
 	ssize_t n;
 
@@ -95,6 +97,13 @@ int main(int argc, char **argv)
 	listen_sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sd < 0) {
 		printf("socket failed: %s\n", strerror(errno));
+		return -1;
+	}
+
+	int reuse = 1;
+	status = setsockopt(listen_sd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+	if (status < 0) {
+		printf("setsockopt reuseaddr failed: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -150,17 +159,19 @@ int main(int argc, char **argv)
 		if (n < 0) {
 			printf("read failed: %s\n", strerror(errno));
 			close(conn_sd);
-			continue;
-		}
-
-		printf("read msg from client: %s\n", rbuf);
-
-		snprintf(wbuf, sizeof(wbuf), "%s", "hello client, I am server!");
-		n = write(conn_sd, wbuf, sizeof(wbuf));
-		if (n < 0) {
-			printf("write failed: %s\n", strerror(errno));
+		} else if (n == 0) {
+			printf("client already close connection\n");
 			close(conn_sd);
-			continue;
+		}
+		printf("recv finished, read msg from client: %s, size:%lu\n", rbuf, strlen(rbuf));
+
+		if (n > 0) {
+			snprintf(wbuf, sizeof(wbuf), "%s", "hello client, I am server!");
+			n = write(conn_sd, wbuf, sizeof(wbuf));
+			if (n < 0) {
+				printf("write failed: %s\n", strerror(errno));
+				close(conn_sd);
+			}
 		}
 	}
 

@@ -1,9 +1,10 @@
-#ifndef _COUPON_PROCESS_H_
-#define _COUPON_PROCESS_H_
+#ifndef _KAFKA_CONSUME_H_
+#define _KAFKA_CONSUME_H_
 
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
+
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -11,7 +12,7 @@
 
 #include "kafka_helper.h"
 
-#define CONFIG_FILE			"../etc/couponreald.ini"
+#define CONFIG_FILE			"../etc/kafka_consume.ini"
 #define DEFAULT_EXPIRE_TIME 20
 #define PARTITION_NUM		40
 
@@ -25,23 +26,6 @@
 using namespace std;
 using namespace bp;
 
-struct MSG
-{
-	string event_type;      // CouponCenter_ToReceive/CouponGet_CouponSuccess
-	string batch_no;
-	string rpt_date;
-	string rpt_hour;
-    string wireless_type;   // iphone/android/ipad
-    string version;         // v4.2.1/v4.3.3/...
-};
-
-struct tpidx
-{
-	int thread_idx; // thread index
-	int part_idx;   // partition index
-};
- 
- 
 class KafkaConsume
 {
 public:
@@ -56,19 +40,15 @@ public:
 
 public:
 	KafkaConsume();
-	~KafkaConsume();
-	int Init();
-	int Start();
-    int Process(void *idx);
-	void Quit();
+	int init();
+	int start();
+    int Process();
+	void release();
 
 private:
     //业务辅助函数
-	inline int _connect_redis(redisContext **redis_ctxt);
-    int _store_data(redisContext *hredis, const vector<MSG>::iterator &iter);
+    int _store_data();
     string _gen_md5(string origin_str);
-
-	void Release();
 
 private:
 
@@ -78,11 +58,8 @@ private:
     long   m_uid_chunks;
     long   m_uid_chunksize;
 
-	std::string m_redis_host;
-	int			m_redis_port;
-	int			m_redis_expime;
 	pthread_t	m_cthread[PARTITION_NUM];
-	pthread_t	m_pthread[PARTITION_NUM];
+	pthread_t	m_pthread;
 };
 
 #endif

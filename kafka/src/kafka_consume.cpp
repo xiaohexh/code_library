@@ -1,20 +1,26 @@
-#include "KafkaConsume.h"
+#include "kafka_consume.h"
 
 #include <assert.h>
 #include <iostream>
+#include <string>
 
-#include "all.pb.h"
-#include "ILog.h"
-#include "IConfig.h"
-#include "Utility.h"
 #include "Singleton.h"
 
+#define random(x) (rand()%x)
+
+/* 
+ * 为每一个分区分配一个线程，消费分区里的数据
+ * 为每一个分区分配一个容器，所有的容器都保存在g_msgs
+ * 为每一个分区分配一个锁，用于消费和生成同步
+ * 分配一个处理数据的线程，用于处理所有容器中的数据，
+   如果数据量比较大，可以单独为每个容器分配一个处理线程
+ */
 
 /* global veriables definition */
 bool					g_released = false;
 bool                    g_loop = true;
  
-vector<vector<MSG> >	g_msgs;
+vector<vector<string> >	g_msgs;
 KafkaHelper             g_kfkhandler[PARTITION_NUM];
 pthread_mutex_t         g_lock[PARTITION_NUM];
 
@@ -30,19 +36,17 @@ void consume_callback(void* buff, int size)
 	}
 
     string msg((char*)buff, size);
-	all::all_msg repMsg;
-    if (!repMsg.ParseFromString(msg)) {
-	    return;
-	}
+
+	int index = random(PARTITION_NUM);
   
 	pthread_mutex_lock(&g_lock[index]);
-	g_msgs[index].push_back(tmpM);
+	g_msgs[index].push_back(msg);
 	pthread_mutex_unlock(&g_lock[index]);
 }
 
-void* process(void* arg)
+void* process(void *arg)
 {
-	Singleton<KafkaConsume>::instance()->Process(arg);
+	Singleton<KafkaConsume>::instance()->Process();
 	return NULL;
 }
 
@@ -54,20 +58,12 @@ void* consume(void* idx)
 	int ret;
 	ret = g_kfkhandler[index].consume_start(index, -1000);
 	if (ret) {
-		ILog::instance()->writeLog(LOG_LEV_ERROR, "[%s %d] partition %d consume_start failed!",
-									__FILE__, __LINE__, index);
 		return NULL;
-	} else {
-		ILog::instance()->writeLog(LOG_LEV_INFO, "[%s %d] partition %d consume_start success!",
-									__FILE__, __LINE__, index);
 	}
 
 	while (g_loop) {
 		ret = g_kfkhandler[index].msg_consume(index, BATCH_SIZE, consume_callback);
-		//sleep(5);
 	}
-
-	ILog::instance()->writeLog(LOG_LEV_INFO, "g_loop was set to False, and quit process");
 
 	return NULL;
 }
@@ -76,14 +72,7 @@ KafkaConsume::KafkaConsume()
 {
 }
 
-KafkaConsume::~KafkaConsume()
-{
-	if (!g_released) {
-		Release();
-	}
-}
-
-void KafkaConsume::Release()
+void KafkaConsume::release()
 {
 	g_released = true;
 	g_loop = false;
@@ -97,30 +86,11 @@ void KafkaConsume::Release()
 		pthread_join(m_cthread[i], NULL);
 	}
 
-	for (int i = 0; i < PARTITION_NUM; ++i) {
-		pthread_join(m_pthread[i], NULL);
-	}
+	pthread_join(m_pthread, NULL);
 
 	for (int i = 0; i < PARTITION_NUM; ++i) {
 		pthread_mutex_destroy(&g_lock[i]);
 	}
-}
-
-inline int KafkaConsume::_connect_redis(redisContext **redis_ctxt)
-{
-    struct timeval timeout = { 1, 500000 }; // 1.5 seconds
-    *redis_ctxt = redisConnectWithTimeout(m_redis_host.c_str(), m_redis_port, timeout);
-    if ((*redis_ctxt) == NULL || (*redis_ctxt)->err) {
-		if (*redis_ctxt) {
-			printf("Connection error: %s\n", (*redis_ctxt)->errstr);
-            redisFree(*redis_ctxt);
-			*redis_ctxt = NULL;
-        } else {
-            printf("Connection error: can't allocate redis context\n");
-        } 
-        return -1; 
-    }
-	return 0;
 }
 
 int KafkaConsume::init()
@@ -158,17 +128,15 @@ int KafkaConsume::init()
 
 int KafkaConsume::start()
 {
-	// create thread to process message & consume from kafka 
+	// create thread to process message
+	if (pthread_create(&m_pthread, NULL, process, NULL) != 0) {
+		return -1;
+	}
+
+	// create thread to consume from kafka 
 	for (int i = 0; i < PARTITION_NUM; ++i) {
-
-		int *pidx = new int(i);
-		if (pthread_create(&m_pthread[i], NULL, process, (void*)pidx) != 0) {
-			return -1;
-		}
-
 		int *cidx = new int(i);
 		if (pthread_create(&m_cthread[i], NULL, consume, (void*)cidx) != 0) {
-			ILog::instance()->writeLog(LOG_LEV_ERROR, "create consume thread failed");
 			return -1;
 		}
 
@@ -182,55 +150,37 @@ int KafkaConsume::start()
    	return 0;
 }
 
-int KafkaConsume::Process(void *idx)
+int KafkaConsume::Process()
 {
-	int index = *((int *)idx);
-	delete (int*)idx;
-
-	redisContext *redis_ctxt = NULL;
-	// if connect to redis failed, stop!
-	assert(_connect_redis(&redis_ctxt) == 0);
-	assert(redis_ctxt != NULL);
+	int index;
 
 	while (g_loop) {
-		pthread_mutex_lock(&g_lock[index]);
-		if (g_msgs[index].size() > 1000) {
-			vector<MSG> tpMsg;
-			tpMsg.swap(g_msgs[index]);
-			g_msgs[index].clear();
-			pthread_mutex_unlock(&g_lock[index]);
+		for (index = 0; index < PARTITION_NUM; index++) {
+			pthread_mutex_lock(&g_lock[index]);
+			if (g_msgs[index].size() > 1000) {
+				vector<string> tpMsg;
+				tpMsg.swap(g_msgs[index]);
+				g_msgs[index].clear();
+				pthread_mutex_unlock(&g_lock[index]);
 
-			for (vector<MSG>::iterator it = tpMsg.begin();
-				 it != tpMsg.end();
-				 ++it) {
-				_store_data(redis_ctxt, it);
+				for (vector<string>::iterator it = tpMsg.begin();
+					 it != tpMsg.end();
+				 	 ++it) {
+					_store_data();
+				}
+				continue;
 			}
-			continue;
+			pthread_mutex_unlock(&g_lock[index]);
 		}
-		pthread_mutex_unlock(&g_lock[index]);
 		sleep(1);
-	}
-
-	if (redis_ctxt != NULL) {
-		redisFree(redis_ctxt);
-		redis_ctxt = NULL;
 	}
 
     return 0;
 }
 
-int KafkaConsume::_store_data(redisContext *hredis, const vector<MSG>::iterator &iter)
+int KafkaConsume::_store_data()
 {
 	return 0;
-}
-
-void KafkaConsume::Quit()
-{
-	if (!g_released) {
-		Release();
-	}
-
-	return;
 }
 
 int main(int argc, char **argv)
@@ -238,4 +188,7 @@ int main(int argc, char **argv)
 	KafkaConsume kfkc;
 	kfkc.init();
 	kfkc.start();
+	kfkc.release();
+
+	return 0;
 }

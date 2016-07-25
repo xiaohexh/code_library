@@ -32,85 +32,12 @@ void consume_callback(void* buff, int size)
     string msg((char*)buff, size);
 	all::all_msg repMsg;
     if (!repMsg.ParseFromString(msg)) {
-		ILog::instance()->writeLog(LOG_LEV_ERROR, "[%s %d]pb msg:%s parse failed",
-									__FILE__, __LINE__, msg.c_str());
 	    return;
 	}
   
-	string evt, bat_no, ver, wt;
-	common::pair pt;
-	// common head
-	for (int j = 0; j < repMsg.field_size(); ++j) {
-		pt = repMsg.field(j);
-		if (pt.key() == "osp") {
-			wt = pt.val();
-		} else if (pt.key() == "apv") {
-			ver = pt.val();
-		}
-    }
-
-    // private info
-	for (int i = 0; i < repMsg.data_size(); ++i) {
-		bool coupon_click = true;
-		all::sub_msg smsg = repMsg.data(i);
-
-		for (int j = 0; j < smsg.field_size(); ++j) {
-			pt = smsg.field(j);
-			if (pt.key() == "cls") {
-				evt = pt.val();
-
-				if (evt != "CouponCenter_ToReceive"
-					&& evt != "CouponGet_CouponSuccess") { // 找出优惠券的点击和领取
-
-					coupon_click = false;
-					break;
-				}
-			} else if (pt.key() == "clp") {
-				bat_no = pt.val();
-				int pos = bat_no.find_last_of("_");
-				if (pos != -1) {
-					bat_no = bat_no.substr(pos + 1);
-				}
-			}
-		}
-		if (!coupon_click) {
-			continue;
-		}
-
-		MSG tmpM;
-		if (evt == "CouponCenter_ToReceive") {
-			tmpM.event_type = "coupontorecv";
-		} else {
-			tmpM.event_type = "couponsuccess";
-		}
-
-		tmpM.batch_no = bat_no;
-		tmpM.wireless_type = wt;
-		tmpM.version = ver;
-
-		// format date & time
-		time_t now = time(0);
-        struct tm ttm;
-        localtime_r(&now, &ttm);
-        char date[16];
-		memset(date, '\0', 16);
-        snprintf(date, sizeof(date), "%04d-%02d-%02d",
-                 ttm.tm_year+1900, ttm.tm_mon+1, ttm.tm_mday);
-		tmpM.rpt_date = date;
-		
-        char hour[8];
-		memset(hour, '\0', 8);
-        snprintf(hour, sizeof(hour), "%02d", ttm.tm_hour);
-		tmpM.rpt_hour = hour;
-
-		// one click report store into MSG.
-		pthread_mutex_lock(&g_lock[index]);
-		g_msgs[index].push_back(tmpM);
-		pthread_mutex_unlock(&g_lock[index]);
-
-		//ILog::instance()->writeLog(LOG_LEV_INFO, "uid:%s, pin:%s, clp:%s",
-		//						   tmpM.uid.c_str(), tmpM.pin.c_str(), tmpM.clp.c_str());
-	}
+	pthread_mutex_lock(&g_lock[index]);
+	g_msgs[index].push_back(tmpM);
+	pthread_mutex_unlock(&g_lock[index]);
 }
 
 void* process(void* arg)
@@ -202,10 +129,10 @@ int KafkaConsume::init()
 
 	/*初始化kafka*/
 	//BROKER = IConfig::instance()->getConfigStr("KAFKA", "BROKER");
-	BROKER = "172.28.111.121:9092,172.28.111.122:9092,172.28.111.123:9092,172.28.111.124:9092,172.28.111.125:9092,172.28.111.126:9092,172.28.111.127:9092";
+	BROKER = "172.8.11.12:9092,172.8.11.22:9092,172.8.11.23:9092,172.28.11.24:9092,172.8.11.25:9092,172.8.11.26:9092,172.8.11.27:9092";
 
 	//TOPIC = IConfig::instance()->getConfigStr("KAFKA", "TOPIC");
-	TOPIC = "click_trim";
+	TOPIC = "uv";
 
 	//BATCH_SIZE = IConfig::instance()->getConfigInt("KAFKA", "BATCH_SIZE");
 	BATCH_SIZE = 1000;
@@ -292,147 +219,8 @@ int KafkaConsume::Process(void *idx)
     return 0;
 }
 
-/**
- * eg:
- * coupon_type:		coupontorecv (or:couponsuccess)
- * batch_no:		10001
- * wireless_type:	ios (or:android/ipad)
- * version:			4.3.1
- * date:			2015-12-30
- * time:			14:23
- *
- * key_format: coupon_type|batch_no|wt|subversion|date|hour
- *
- * coupontorecv|-|-|-|-|2015-12-30|14
- * coupontorecv|-|IOS|-|2015-12-30|14
- * coupontorecv|-|IOS|4.3.1|2015-12-30|14
- * coupontorecv|10001|-|-|2015-12-30|-
- * coupontorecv|10001|-|-|2015-12-30|14
- * coupontorecv|10001|IOS|4.3.1|2015-12-30|-
- * coupontorecv|10001|IOS|4.3.1|2015-12-30|14
- */
 int KafkaConsume::_store_data(redisContext *hredis, const vector<MSG>::iterator &iter)
 {
-	//ILog::instance()->writeLog(LOG_LEV_ERROR, "[%s %d]store data, et:%s bn:%s wt:%s ver:%s dt:%s hr:%s",
-	//		__FILE__, __LINE__, iter->event_type.c_str(), iter->batch_no.c_str(), iter->wireless_type.c_str(), iter->version.c_str(), iter->rpt_date.c_str(), iter->rpt_hour.c_str());
-
-	char key1[128] = {0};
-	memset(key1, '\0', 128);
-	snprintf(key1, 128, "%s|-|-|-|%s|%s",
-			iter->event_type.c_str(), iter->rpt_date.c_str(), iter->rpt_hour.c_str());
-
-	char key2[128] = {0};
-	memset(key2, '\0', 128);
-	snprintf(key2, 128, "%s|-|%s|-|%s|%s",
-			iter->event_type.c_str(), iter->wireless_type.c_str(), iter->rpt_date.c_str(), iter->rpt_hour.c_str());
-
-	char key3[128] = {0};
-	memset(key3, '\0', 128);
-	snprintf(key3, 128, "%s|-|%s|%s|%s|%s",
-			iter->event_type.c_str(), iter->wireless_type.c_str(), iter->version.c_str(), iter->rpt_date.c_str(), iter->rpt_hour.c_str());
-
-	char key4[128] = {0};
-	memset(key4, '\0', 128);
-	snprintf(key4, 128, "%s|%s|-|-|%s|-",
-			iter->event_type.c_str(), iter->batch_no.c_str(), iter->rpt_date.c_str());
-
-	char key5[128] = {0};
-	memset(key5, '\0', 128);
-	snprintf(key5, 128, "%s|%s|-|-|%s|%s",
-			iter->event_type.c_str(), iter->batch_no.c_str(), iter->rpt_date.c_str(), iter->rpt_hour.c_str());
-
-	char key6[128] = {0};
-	memset(key6, '\0', 128);
-	snprintf(key6, 128, "%s|%s|%s|%s|%s|-",
-			iter->event_type.c_str(), iter->batch_no.c_str(), iter->wireless_type.c_str(), iter->version.c_str(), iter->rpt_date.c_str());
-
-	char key7[128] = {0};
-	memset(key7, '\0', 128);
-	snprintf(key7, 128, "%s|%s|%s|%s|%s|%s",
-			iter->event_type.c_str(), iter->batch_no.c_str(), iter->wireless_type.c_str(), iter->version.c_str(), iter->rpt_date.c_str(), iter->rpt_hour.c_str());
-
-
-	if (unlikely(NULL == hredis)) {
-		ILog::instance()->writeLog(LOG_LEV_ERROR, "[%s %d]before exe credisCommand hredis is NULL, this is lead to coredump", __FILE__, __LINE__);
-		_connect_redis(&hredis);
-	}
-
-	/* increase key by one */
-	//pt.reset();
-	redisReply* reply1 = (redisReply*)redisCommand(hredis, "INCR %s", key1);
-	redisReply* reply2 = (redisReply*)redisCommand(hredis, "INCR %s", key2);
-	redisReply* reply3 = (redisReply*)redisCommand(hredis, "INCR %s", key3);
-	redisReply* reply4 = (redisReply*)redisCommand(hredis, "INCR %s", key4);
-	redisReply* reply5 = (redisReply*)redisCommand(hredis, "INCR %s", key5);
-	redisReply* reply6 = (redisReply*)redisCommand(hredis, "INCR %s", key6);
-	redisReply* reply7 = (redisReply*)redisCommand(hredis, "INCR %s", key7);
-	//PerforCal("queryipinfo_Req2Redis", pt.used());
-	
-    if (NULL == reply1 || NULL == reply2 || NULL == reply3 || NULL == reply4
-		|| NULL == reply5 || NULL == reply6 || NULL == reply7) {
-		ILog::instance()->writeLog(LOG_LEV_ERROR, "[%s %d]credisCommand 'INCR' failed:reply is NULL", __FILE__, __LINE__);
-		// close and reconnect to redis
-		if (NULL != hredis) {
-			redisFree(hredis);
-			if (_connect_redis(&hredis) < 0) {
-				if(NULL != reply1) freeReplyObject(reply1);
-				if(NULL != reply2) freeReplyObject(reply2);
-				if(NULL != reply3) freeReplyObject(reply3);
-				if(NULL != reply4) freeReplyObject(reply4);
-				if(NULL != reply5) freeReplyObject(reply5);
-				if(NULL != reply6) freeReplyObject(reply6);
-				if(NULL != reply7) freeReplyObject(reply7);
-				return -1;
-		    }
-		}
-    } 
-
-    if(NULL != reply1) freeReplyObject(reply1);
-    if(NULL != reply2) freeReplyObject(reply2);
-    if(NULL != reply3) freeReplyObject(reply3);
-    if(NULL != reply4) freeReplyObject(reply4);
-    if(NULL != reply5) freeReplyObject(reply5);
-    if(NULL != reply6) freeReplyObject(reply6);
-    if(NULL != reply7) freeReplyObject(reply7);
-
-	/* set expire time of key */
-	reply1 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key1, m_redis_expime);
-	reply2 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key2, m_redis_expime);
-	reply3 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key3, m_redis_expime);
-	reply4 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key4, m_redis_expime);
-	reply5 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key5, m_redis_expime);
-	reply6 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key6, m_redis_expime);
-	reply7 = (redisReply*)redisCommand(hredis, "EXPIRE %s %d", key7, m_redis_expime);
-
-	//PerforCal("queryipinfo_Req2Redis", pt.used());
-	
-    if (NULL == reply1 || NULL == reply2 || NULL == reply3 || NULL == reply4
-		|| NULL == reply5 || NULL == reply6 || NULL == reply7) {
-		ILog::instance()->writeLog(LOG_LEV_ERROR, "[%s %d]credisCommand 'INCR' failed:reply is NULL", __FILE__, __LINE__);
-		// close and reconnect to redis
-		if (NULL != hredis) {
-			redisFree(hredis);
-			if (_connect_redis(&hredis) < 0) {
-				if(NULL != reply1) freeReplyObject(reply1);
-				if(NULL != reply2) freeReplyObject(reply2);
-				if(NULL != reply3) freeReplyObject(reply3);
-				if(NULL != reply4) freeReplyObject(reply4);
-				if(NULL != reply5) freeReplyObject(reply5);
-				if(NULL != reply6) freeReplyObject(reply6);
-				if(NULL != reply7) freeReplyObject(reply7);
-		        return -1;
-		    }
-		}
-    }
-
-    if(NULL != reply1) freeReplyObject(reply1);
-    if(NULL != reply2) freeReplyObject(reply2);
-    if(NULL != reply3) freeReplyObject(reply3);
-    if(NULL != reply4) freeReplyObject(reply4);
-    if(NULL != reply5) freeReplyObject(reply5);
-    if(NULL != reply6) freeReplyObject(reply6);
-    if(NULL != reply7) freeReplyObject(reply7);
-
 	return 0;
 }
 

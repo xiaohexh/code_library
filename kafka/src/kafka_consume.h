@@ -10,11 +10,12 @@
 #include <sys/shm.h>
 #include <pthread.h>
 
+#include "my_log.h"
+#include "my_config.h"
 #include "kafka_helper.h"
 
-#define CONFIG_FILE			"../etc/kafka_consume.ini"
-#define DEFAULT_EXPIRE_TIME 20
-#define PARTITION_NUM		40
+#define CONFIG_FILE		"../etc/kafka_consume.ini"
+const int				PARTITION_NUM = 1;
 
 #ifndef likely
 #define likely(x)  __builtin_expect(!!(x), 1)
@@ -47,7 +48,7 @@ public:
 
 private:
     //业务辅助函数
-    int _store_data();
+    int _store_data(const string &msg);
     string _gen_md5(string origin_str);
 
 private:

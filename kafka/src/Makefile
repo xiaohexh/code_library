@@ -7,7 +7,9 @@ CFLAGS = -g -Wall -O2 -pipe -fno-ident -MMD -D_GNU_SOURCE -D_REENTRANT -Wno-depr
 CXXFLAGS += $(CFLAGS)
 
 OBJ = kafka_consume.o \
-      kafka_helper.o
+      kafka_helper.o \
+      my_log.o \
+      my_config.o
 
 TARGET = kfk_consume
 

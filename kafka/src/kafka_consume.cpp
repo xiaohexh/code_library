@@ -19,10 +19,10 @@
 /* global veriables definition */
 bool					g_released = false;
 bool                    g_loop = true;
- 
+
 vector<vector<string> >	g_msgs;
-KafkaHelper             g_kfkhandler[PARTITION_NUM];
-pthread_mutex_t         g_lock[PARTITION_NUM];
+KafkaHelper             *g_kfkhandler;
+pthread_mutex_t         *g_lock;
 
 int                     g_partitions = 0; // kafka partions
 int                     BATCH_SIZE = 0; // kafka 批量取个数
@@ -37,7 +37,7 @@ void consume_callback(void* buff, int size)
 
     string msg((char*)buff, size);
 
-	int index = random(PARTITION_NUM);
+	int index = random(g_partitions);
   
 	pthread_mutex_lock(&g_lock[index]);
 	g_msgs[index].push_back(msg);
@@ -98,14 +98,14 @@ int KafkaConsume::init()
 	int ret = 0;
 
 	/*初始化kafka*/
-	//BROKER = IConfig::instance()->getConfigStr("KAFKA", "BROKER");
-	BROKER = "172.8.11.12:9092,172.8.11.22:9092,172.8.11.23:9092,172.28.11.24:9092,172.8.11.25:9092,172.8.11.26:9092,172.8.11.27:9092";
+	BROKER = MyConfig::instance()->getConfigStr("KAFKA", "BROKER");
+	//BROKER = "172.8.11.12:9092,172.8.11.22:9092,172.8.11.23:9092,172.28.11.24:9092,172.8.11.25:9092,172.8.11.26:9092,172.8.11.27:9092";
 
-	//TOPIC = IConfig::instance()->getConfigStr("KAFKA", "TOPIC");
-	TOPIC = "uv";
+	TOPIC = MyConfig::instance()->getConfigStr("KAFKA", "TOPIC");
+	//TOPIC = "uv";
 
-	//BATCH_SIZE = IConfig::instance()->getConfigInt("KAFKA", "BATCH_SIZE");
-	BATCH_SIZE = 1000;
+	BATCH_SIZE = MyConfig::instance()->getConfigInt("KAFKA", "BATCH_SIZE");
+	//BATCH_SIZE = 1000;
 
 	for (int i = 0; i < PARTITION_NUM; ++i) {
 		ret = g_kfkhandler[i].init(BROKER, TOPIC, false);
@@ -146,7 +146,7 @@ int KafkaConsume::start()
 	while (g_loop) {
 		sleep(1);
 	}
-	
+
    	return 0;
 }
 
@@ -166,7 +166,7 @@ int KafkaConsume::Process()
 				for (vector<string>::iterator it = tpMsg.begin();
 					 it != tpMsg.end();
 				 	 ++it) {
-					_store_data();
+					_store_data(*it);
 				}
 				continue;
 			}
@@ -178,17 +178,41 @@ int KafkaConsume::Process()
     return 0;
 }
 
-int KafkaConsume::_store_data()
+int KafkaConsume::_store_data(const std::string &msg)
 {
+	log_debug(LOG_DEBUG, "%s", msg.c_str());
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
+	int status;
+
+	status = log_init(LOG_DEBUG, "./kfk_consume.log");
+	if (status < 0) {
+		log_error("log init failed\n");
+		return 1;
+	}
+	
+	status = MyConfig::instance()->loadConfigFile(CONFIG_FILE);
+	if (status < 0) {
+		log_error("load config file failed\n");
+		return 1;
+	}
+
 	KafkaConsume kfkc;
-	kfkc.init();
+
+	status = kfkc.init();
+	if (status < 0) {
+		log_error("init failed\n");
+		return 1;
+	}
+
 	kfkc.start();
+
 	kfkc.release();
+
+	log_deinit();
 
 	return 0;
 }

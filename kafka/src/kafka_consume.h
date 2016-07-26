@@ -14,8 +14,8 @@
 #include "my_config.h"
 #include "kafka_helper.h"
 
-#define CONFIG_FILE		"../etc/kafka_consume.ini"
-const int				PARTITION_NUM = 1;
+char *CONFIG_FILE	= "../etc/kafka_consume.ini";
+char *LOG_FILE	= "./kfk_consume.log";
 
 #ifndef likely
 #define likely(x)  __builtin_expect(!!(x), 1)
@@ -59,7 +59,7 @@ private:
     long   m_uid_chunks;
     long   m_uid_chunksize;
 
-	pthread_t	m_cthread[PARTITION_NUM];
+	pthread_t	*m_cthread;
 	pthread_t	m_pthread;
 };
 

@@ -1,0 +1,20 @@
+1469609898 ALERT mywarn : Alert info
+1469609898 WARN mywarn : This will be a logged warning
+1469609898 CRIT mywarn : Importance depends on context
+1469609898 CRIT mywarn : This will show up << as 1 critical message
+1469610043 ALERT mywarn : Alert info
+1469610043 WARN mywarn : This will be a logged warning
+1469610043 CRIT mywarn : Importance depends on context
+1469610043 CRIT mywarn : This will show up << as 1 critical message
+1469610066 ALERT mywarn : Alert info
+1469610066 WARN mywarn : This will be a logged warning
+1469610066 CRIT mywarn : Importance depends on context
+1469610066 CRIT mywarn : This will show up << as 1 critical message
+1469610111 ALERT mywarn : Alert info
+1469610111 WARN mywarn : This will be a logged warning
+1469610111 CRIT mywarn : Importance depends on context
+1469610111 CRIT mywarn : This will show up << as 1 critical message
+1469610122 ALERT mywarn : Alert info
+1469610122 WARN mywarn : This will be a logged warning
+1469610122 CRIT mywarn : Importance depends on context
+1469610122 CRIT mywarn : This will show up << as 1 critical message

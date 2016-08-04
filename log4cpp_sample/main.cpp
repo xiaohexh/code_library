@@ -15,8 +15,6 @@ void use_config_file()
     log4cpp::PropertyConfigurator::configure("./log4cpp.conf");
 
     //实例化category对象
-    // log4cpp::Category* root = &log4cpp::Category::getRoot();
-    log4cpp::Category& root = log4cpp::Category::getRoot();
     log4cpp::Category& main = 
         log4cpp::Category::getInstance(std::string("MAIN"));
 
@@ -24,6 +22,8 @@ void use_config_file()
     main.debug("This is debug");
     main.info("This is info");
     main.alert("This is alert");
+
+	log4cpp::Category::shutdown();   
 }
 
 void without_config_file()
@@ -84,7 +84,7 @@ void without_config_file()
 
 int main()
 {
-	//use_config_file();
+	use_config_file();
 	without_config_file();
 	return 0;
 }

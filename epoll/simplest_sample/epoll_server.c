@@ -81,6 +81,19 @@ int set_nonblocking(int fd)
     return fcntl(fd, F_SETFD, flag | O_NONBLOCK);
 }
 
+/*
+int set_recvbuf(int fd)
+{
+	int recv_buf;
+	socklen_t len;
+
+	recv_buf = 32 * 1024;
+	len = sizeof(recv_buf);
+
+	return setsockopt(fd, SOL_SOCKET, SO_RCVBUF,(const char*)&recv_buf, len);
+}
+*/
+
 int listen_to_port()
 {
     int status;
@@ -157,6 +170,15 @@ int accept_conn()
         close(client_sd);
         return ERR;
     }
+
+	/*
+	status = set_recvbuf(client_sd);
+    if (status < 0) {
+        printf("set recvbuf failed: %s\n", strerror(errno));
+        close(client_sd);
+        return ERR;
+    }
+	*/
 
     /* add client socket fd to epoll */
     struct epoll_event event;

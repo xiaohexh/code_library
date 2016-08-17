@@ -72,10 +72,10 @@ int main(int argc, char **argv)
 
 	printf("read msg from server: %s\n", rbuf);
 
+	close(sd);
+	return 0;
+
 err:
 	close(sd);
 	return -1;
-
-	close(sd);
-	return 0;
 }

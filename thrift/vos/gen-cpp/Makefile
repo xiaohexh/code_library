@@ -14,6 +14,8 @@ GEN_SRC = VOSServer.cpp \
 
 SERVER=VOSServer
 CLIENT=VOSClient
+
+.PHONY : all clean
   
 all: ${SERVER} ${CLIENT}
 
